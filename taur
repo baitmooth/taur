@@ -113,4 +113,4 @@ func_getver PKGVER
 func_getver PKGREL
 func_getver EPOCH
 func_tar
-#func_rem
+func_rem
