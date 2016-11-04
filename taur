@@ -4,13 +4,30 @@
 #	taur	#
 #		#
 #################
+# bunch of scripts to cleanup after building packages from aur
+
 NAME=$1
-WORKDIR=/home/mos/Projects/packages/
-BUILDPTH=${WORKDIR}build/
-ARCHPTH=${WORKDIR}archive/
-AURPTH=${WORKDIR}aur/
+USER=`whoami`
+WORKDIR=/home/$USER/Projects/packages
+BUILDDIR=${WORKDIR}/build
+ARCHIVEDIR=${WORKDIR}/archive
+AURDIR=${WORKDIR}/aur
 VAR=""
 
+# check for user makepkg.conf and apply VARS
+MAKEPKG=`find ~ -type f -name makepkg.conf`
+if [ -z $MAKEPKG ]; then
+	BUILDDIR=/tmp/makepkg;
+else
+	eval `grep BUILDDIR $MAKEPKG`;
+	eval `grep PKGDEST $MAKEPKG`;
+	ARCHIVEDIR=$PKGDEST/../archive;
+fi
+if [ ! -d $ARCHIVEDIR ]; then
+	echo missing $ARCHIVEDIR;
+	create $ARCHIVEDIR before calling again;
+	exit 1
+fi
 ##Colors
 #Foreground
 FBLK=`tput setaf 0`	#Black
@@ -39,7 +56,7 @@ function func_getver() {
 #f to get the (version) number
 # func_getver epoch|verbld|pkgver|etc…
     TOGREP="$1"
-    VAR=`grep -i "$TOGREP" -m 1 "$AURPTH""$NAME"/.SRCINFO | awk '{print $3}'`
+    VAR=`grep -i "$TOGREP" -m 1 "$AURDIR"/"$NAME"/.SRCINFO | awk '{print $3}'`
     eval $1=\$VAR
 }
 
@@ -52,32 +69,30 @@ function func_e() {
 function func_tar() {
 #function to create the archive
     TAROPTS=" -h --sort=name "
-    TARSFFX=".tar.xz"
+    TARSFFX="tar.xz"
     ARCHNAME=$NAME
-    VERSION="$EPOCH"_"$PKGVER"-"$PKGREL"
     if [[ $EPOCH ]]; then
-        func_e ${FGRN}${BLD}==\>${RST} creating Archive ${BLD}$NAME-$VERSION$TARSFFX${RST};
-        tar -C $AURPTH -czf $NAME-$VERSION$TARSFFX $TAROPTS $NAME;
-        mv $AURPATH$NAME-$VERSION$TARSFFX $ARCHPTH$NAME-$VERSION$TARSFFX
+        VERSION="$EPOCH"_"$PKGVER"-"$PKGREL";
     else
-	VERSION="$PKGVER"-"$PKGREL"
-        func_e ${FGRN}${BLD}==\>${RST} creating Archive ${BLD}$NAME-$VERSION$TARSFFX${RST};
-        tar -C $AURPTH -czf $NAME-$VERSION$TARSFFX $TAROPTS $NAME;
-        mv $AURPATH$NAME-$VERSION$TARSFFX $ARCHPTH$NAME-$VERSION$TARSFFX
+	VERSION="$PKGVER"-"$PKGREL";
     fi
+    func_e ${FGRN}${BLD}==\>${RST} creating Archive ${BLD}${NAME}-${VERSION}.${TARSFFX}${RST}
+    cd $AURDIR
+    tar -C $AURDIR -czf $NAME-$VERSION.$TARSFFX $TAROPTS $NAME
+    mv $AURDIR/$NAME-$VERSION.$TARSFFX $ARCHIVEDIR/
 }
 
 #function to remove the directory
 function func_rem() {
     RMOPTS="-Rf"
-    if [ -d $BUILDPTH$NAME ]; then
-        TARGET=$BUILDPTH$NAME;
-        func_e ${FGRN}${BLD}==\>${RST} Removing ${BLD}$TARGET${RST}
+    if [ -d $BUILDDIR/$NAME ]; then
+        TARGET=$BUILDDIR/$NAME;
+        func_e ${FGRN}${BLD}==\>${RST} Removing ${BLD}$TARGET${RST};
         rm $RMOPTS $TARGET;
     fi
-    if [ -d $AURPTH$NAME ]; then
-        TARGET=$AURPTH$NAME;
-        func_e ${FGRN}${BLD}==\>${RST} Removing ${BLD}$TARGET${RST}
+    if [ -d $AURDIR/$NAME ]; then
+        TARGET=$AURDIR/$NAME;
+        func_e ${FGRN}${BLD}==\>${RST} Removing ${BLD}$TARGET${RST};
         rm $RMOPTS $TARGET;
     fi
 }
@@ -87,7 +102,7 @@ if [ -z "$@" ]; then
     echo -e "${FRED}${BLD}::${RST}No target given${FRED}${BLD}::${RST}";
     exit 1;
 fi
-if [ -d "${AURPTH}${NAME}" ]; then
+if [ -d "${AURDIR}/${NAME}" ]; then
    echo -e "Archiviere Verzeichnis ${FGRN}${BLD}$@${RST}.";
 else
    echo -e "${FRED}${BLD}::${RST}${BLD}"$@"${RST} not found${FRED}${BLD}::${RST}"
@@ -98,4 +113,4 @@ func_getver PKGVER
 func_getver PKGREL
 func_getver EPOCH
 func_tar
-func_rem
+#func_rem
