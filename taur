@@ -1,0 +1,101 @@
+#!/bin/bash
+#################
+#		#
+#	taur	#
+#		#
+#################
+NAME=$1
+WORKDIR=/home/mos/Projects/packages/
+BUILDPTH=${WORKDIR}build/
+ARCHPTH=${WORKDIR}archive/
+AURPTH=${WORKDIR}aur/
+VAR=""
+
+##Colors
+#Foreground
+FBLK=`tput setaf 0`	#Black
+FRED=`tput setaf 1`	#Red
+FGRN=`tput setaf 2`	#Green
+FYLW=`tput setaf 3`	#Yellow
+FBLU=`tput setaf 4`	#Blue
+FMGT=`tput setaf 5`	#Magenta
+FCYN=`tput setaf 6`	#Cyan
+FWHT=`tput setaf 7`	#White
+#Background
+BBLK=`tput setab 0`	#Black
+BRED=`tput setab 1`	#Red
+BGRN=`tput setab 2`	#Green
+BYLW=`tput setab 3`	#Yellow
+BBLU=`tput setab 4`	#BLue
+BMGT=`tput setab 5`	#Magenta
+BCYN=`tput setab 6`	#Cyan
+BWHT=`tput setab 7`	#White
+#Other
+BLD=`tput bold`
+RST=`tput sgr0`
+
+##Functions
+function func_getver() {
+#f to get the (version) number
+# func_getver epoch|verbld|pkgver|etc…
+    TOGREP="$1"
+    VAR=`grep -i "$TOGREP" -m 1 "$AURPTH""$NAME"/.SRCINFO | awk '{print $3}'`
+    eval $1=\$VAR
+}
+
+function func_e() {
+#function to output to standard out
+#func_e TEXT
+    echo -e $@
+}
+
+function func_tar() {
+#function to create the archive
+    TAROPTS=" -h --sort=name "
+    TARSFFX=".tar.xz"
+    ARCHNAME=$NAME
+    VERSION="$EPOCH"_"$PKGVER"-"$PKGREL"
+    if [[ $EPOCH ]]; then
+        func_e ${FGRN}${BLD}==\>${RST} creating Archive ${BLD}$NAME-$VERSION$TARSFFX${RST};
+        tar -C $AURPTH -czf $NAME-$VERSION$TARSFFX $TAROPTS $NAME;
+        mv $AURPATH$NAME-$VERSION$TARSFFX $ARCHPTH$NAME-$VERSION$TARSFFX
+    else
+	VERSION="$PKGVER"-"$PKGREL"
+        func_e ${FGRN}${BLD}==\>${RST} creating Archive ${BLD}$NAME-$VERSION$TARSFFX${RST};
+        tar -C $AURPTH -czf $NAME-$VERSION$TARSFFX $TAROPTS $NAME;
+        mv $AURPATH$NAME-$VERSION$TARSFFX $ARCHPTH$NAME-$VERSION$TARSFFX
+    fi
+}
+
+#function to remove the directory
+function func_rem() {
+    RMOPTS="-Rf"
+    if [ -d $BUILDPTH$NAME ]; then
+        TARGET=$BUILDPTH$NAME;
+        func_e ${FGRN}${BLD}==\>${RST} Removing ${BLD}$TARGET${RST}
+        rm $RMOPTS $TARGET;
+    fi
+    if [ -d $AURPTH$NAME ]; then
+        TARGET=$AURPTH$NAME;
+        func_e ${FGRN}${BLD}==\>${RST} Removing ${BLD}$TARGET${RST}
+        rm $RMOPTS $TARGET;
+    fi
+}
+
+#check for empty call
+if [ -z "$@" ]; then
+    echo -e "${FRED}${BLD}::${RST}No target given${FRED}${BLD}::${RST}";
+    exit 1;
+fi
+if [ -d "${AURPTH}${NAME}" ]; then
+   echo -e "Archiviere Verzeichnis ${FGRN}${BLD}$@${RST}.";
+else
+   echo -e "${FRED}${BLD}::${RST}${BLD}"$@"${RST} not found${FRED}${BLD}::${RST}"
+   exit 1;
+fi
+
+func_getver PKGVER
+func_getver PKGREL
+func_getver EPOCH
+func_tar
+func_rem
